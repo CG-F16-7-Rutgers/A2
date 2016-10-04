@@ -20,6 +20,14 @@
 namespace SteerLib
 {
 
+	class Edge {
+	public:
+		float distance;
+		Util::Vector normal;
+		int index;
+		Edge() :index(-1) {}
+		~Edge(){}
+	};
 	class STEERLIB_API GJK_EPA
 	{
 	public:

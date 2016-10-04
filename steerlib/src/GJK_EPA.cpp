@@ -1,5 +1,5 @@
 #include "obstacles/GJK_EPA.h"
-
+#define TOLERANCE 0.000001
 
 SteerLib::GJK_EPA::GJK_EPA()
 {
@@ -140,7 +140,42 @@ bool containsOrigin(std::vector<Util::Vector> &simplex, Util::Vector &d) {
 	
 	return false;
 }
-
+SteerLib::Edge find_closest_edge(std::vector<Util::Vector>& simple) {
+	SteerLib::Edge closet_e;
+	closet_e.distance = DBL_MAX;
+	for (int i = 0; i < simple.size(); i++) {
+		int j = (i + 1 == simple.size()) ? 0 : (i + 1);
+		Util::Vector a = simple[i];
+		Util::Vector b = simple[j];
+		Util::Vector ab = b - a;
+		Util::Vector ao = (-1) *a;
+		//Util::Vector ao = (-1) *simple[i]; 
+		Util::Vector prep_AB = ao*(ab*ab) - ab*(ab*ao);
+		prep_AB = Util::normalize(prep_AB);
+		double d = fabs(ao * prep_AB);
+		if (d < closet_e.distance) {
+			closet_e.distance = d;
+			closet_e.normal = (-1) * prep_AB;
+			closet_e.index = j;
+		}
+	}
+	return closet_e;
+}
+bool EPA(std::vector<Util::Vector>& simplex, float& return_penetration_depth, Util::Vector& return_penetration_vector, const std::vector<Util::Vector>& _shapeA, const std::vector<Util::Vector>& _shapeB) {
+	while (true) {
+		SteerLib::Edge closest_e = find_closest_edge(simplex);
+		Util::Vector p = support(_shapeA, _shapeB, closest_e.normal);
+		double distance =  p*closest_e.normal;
+		if (fabs(distance - closest_e.distance) < TOLERANCE) {
+			return_penetration_vector = closest_e.normal;
+			return_penetration_depth = distance;
+			return true;
+		}
+		else {
+			simplex.insert(simplex.begin() + closest_e.index, p);
+		}
+	}
+}
 bool SteerLib::GJK_EPA::intersect(float& return_penetration_depth, Util::Vector& return_penetration_vector, const std::vector<Util::Vector>& _shapeA, const std::vector<Util::Vector>& _shapeB)
 {
 
@@ -171,12 +206,10 @@ bool SteerLib::GJK_EPA::intersect(float& return_penetration_depth, Util::Vector&
 		}
 		else {
 			if (containsOrigin(simplex,direction)) {
-			//	std::cout <<"contains origin" << std::endl;
+				EPA(simplex, return_penetration_depth, return_penetration_vector, _shapeA, _shapeB);
 				return true;
 			}
-		//	std::cout << "not contains origin" << std::endl;
 		}
-	
 	}
 
 
